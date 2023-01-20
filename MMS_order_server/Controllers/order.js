@@ -1,4 +1,5 @@
-const express = require('express')
+const express = require('express');
+const { escapeSelector } = require('jquery');
 const router = express.Router();
 const mongoose = require('../database')
 const {userModel, categoryModel, orderModel} = require('../schemas')
@@ -32,7 +33,7 @@ router.get('/getAllOrders', async(req, res)=>{
     order_formatted = []
     await orderModel.find({}).then((orders)=>{
         orders.map((order)=>{
-           order_formatted.push({user: order.user_id, 'products': countQuantities(order.product_id), shipping_address: order.shipping_address, cost: order.cost, status: order.status})
+           order_formatted.push({order_id: order._id, user: order.user_id, 'products': countQuantities(order.product_id), shipping_address: order.shipping_address, cost: order.cost, status: order.status})
            console.log("order formatted: ", order_formatted)
         })
         
@@ -50,15 +51,20 @@ router.post('/addOrder', async(req, res)=>{
 })
 
 router.delete('/deleteOrder', async(req, res)=>{
-
+    await orderModel.find({_id: req.body.order_id}).deleteOne().exec()
+    res.json("successfully deleted")
 })
 
 router.put('/updateOrderAddress', async(req, res)=>{
-
+    await orderModel.findOneAndUpdate({_id: req.body.order_id}, {shipping_address: req.body.shipping_address})
+    res.json("Updated address")
 })
 
 router.put('/updateOrderStatus', async(req, res)=>{
-
+    current_status = await orderModel.find({_id: req.body.order_id}).select({_id: 0, status: 1})
+    new_status = current_status[0].status == "not delivered"? "delivered": "not delivered"
+    await orderModel.findOneAndUpdate({_id: req.body.order_id}, {status: new_status})
+    res.json(`status updated to ${new_status}`)
 })
 
 module.exports = router
