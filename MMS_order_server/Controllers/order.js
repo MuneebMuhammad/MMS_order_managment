@@ -2,7 +2,9 @@ const express = require('express');
 const { escapeSelector } = require('jquery');
 const router = express.Router();
 const mongoose = require('../database')
-const {userModel, categoryModel, orderModel} = require('../schemas')
+const {userModel, categoryModel, orderModel, productModel, invoiceModel} = require('../schemas')
+
+const ObjectId = require('mongoose').Types.ObjectId;
 
 // converts list of products into dictionary of product keys and quantity value
 function countQuantities(products){
@@ -30,20 +32,24 @@ function countQuantities(products){
 }
 
 router.get('/getAllProducts', async(req, res)=>{
-    products = await categoryModel.find({})
+    products = await productModel.find({})
     res.json(products)
 })
 
 router.get('/getAllOrders', async(req, res)=>{
-    order_formatted = []
-    await orderModel.find({}).then((orders)=>{
-        orders.map((order)=>{
-           order_formatted.push({order_id: order._id, user: order.user_id, 'products': countQuantities(order.product_id), shipping_address: order.shipping_address, cost: order.cost, status: order.status})
-           console.log("order formatted: ", order_formatted)
-        })
-        
-    });
-    res.json(order_formatted)    
+    all_orders = await orderModel.find({})
+    res.json(all_orders)    
+})
+
+router.get('/getOrderInvoices/:order_id', async(req, res)=>{
+    all_orders = await invoiceModel.find({order_id: ObjectId(req.params.order_id)})
+    res.json(all_orders)
+})
+
+router.delete('/deleteInvoice/:invoice_id', async(req, res)=>{
+    console.log(req.params.invoice_id)
+    await invoiceModel.find({_id: req.params.invoice_id}).deleteOne().exec()
+    res.json("deleted invoice")
 })
 
 router.post('/addOrder', async(req, res)=>{
@@ -57,7 +63,8 @@ router.post('/addOrder', async(req, res)=>{
 
 router.delete('/deleteOrder', async(req, res)=>{
     await orderModel.find({_id: req.body.order_id}).deleteOne().exec()
-    res.json("successfully deleted")
+    await invoiceModel.find({order_id: ObjectId(req.body.order_id)}).deleteMany().exec()
+    res.json("deleted order")
 })
 
 router.put('/updateOrderAddress', async(req, res)=>{
