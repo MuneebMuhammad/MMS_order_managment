@@ -1,43 +1,63 @@
 const express = require('express')
 const router = express.Router();
 const mongoose = require('../database')
-const {userModel, categoryModel} = require('../schemas')
+const {userModel, categoryModel, cartModel} = require('../schemas')
+const ObjectId = mongoose.Types.ObjectId
 
 
+// get all the products and the reqpective quantities of a user
 router.get('/getCart/:user_id', async(req, res)=>{
-    cartProducts = await userModel.find({_id: req.params.user_id}).select({_id: 0, cart: 1})
-    console.log(cartProducts)
-    res.json(cartProducts)
-})
-
-router.post('/addCart/:user_id', async(req, res)=>{
-    for (let product of req.body.products){
-        await categoryModel.find({'products._id': product}).then((found)=>{
-            userModel.findOneAndUpdate({_id: req.params.user_id}, {$push: {cart: product}}).then(()=>{
-                console.log("product added to cart")
-            })
-        })
-        .catch((e)=>{
-            console.log("error: in finding cart", e)
-        })
+    try{
+        cartProducts = await cartModel.find({user_id: ObjectId(req.params.user_id)})
+        res.json(cartProducts)
     }
-    res.json("yes")
+    catch(e){
+        res.json([])
+    }
 })
 
+// increases the quantity of the product in a user's cart by one
+router.post('/addCart/:user_id', async(req, res)=>{
+   try{
+    await cartModel.find({user_id: ObjectId(req.params.user_id), product_id: ObjectId(req.body.product_id)}).then(async(results)=>{
+        a = await cartModel.updateOne({_id: results[0]._id}, {quantity: results[0].quantity + 1})
+        res.json(a)
+       })
+   }
+   catch(e){
+    newCartInvoice = new cartModel({user_id: ObjectId(req.params.user_id), product_id: ObjectId(req.body.product_id), quantity: 1})
+    a = await newCartInvoice.save()
+    res.json(a)
+   }
+})
+
+// reduces the quantity of the product in cart of a user by one
 router.delete('/deleteCart/:user_id', async(req, res)=>{
-    await userModel.updateOne({_id: req.params.user_id}, {$pull: {cart: req.body.product}}).then((found)=>{
-        console.log("found:", found.modifiedCount)
-        if (found.modifiedCount > 0){
-            console.log("deleted item from cart");
+    try{
+        cartInvoice = await cartModel.find({user_id: ObjectId(req.params.user_id), product_id: ObjectId(req.body.product_id)})
+        if (cartInvoice[0].quantity == 1){
+            a = await cartModel.find({_id: ObjectId(cartInvoice[0]._id)}).deleteOne().exec();
+            res.json(a)
         }
         else{
-            console.log("Product not found in cart")
+            a = await cartModel.updateOne({_id: ObjectId(cartInvoice[0]._id)}, {quantity: cartInvoice[0].quantity - 1})
+            res.json(a)
         }
-    })
-    .catch((e)=>{
-        console.log("error occured while deleting from cart:", e);
-    })
-    res.json("yes")
+    }
+    catch(e){
+        res.json(e)
+    }
+})
+
+// delete all the products in a user's cart
+router.delete('/emptyCart/:user_id', async(req, res)=>{
+    try{
+        a = await cartModel.find({user_id: ObjectId(req.params.user_id)}).deleteMany().exec()
+        res.json(a)
+    }
+    catch(e){
+        res.json(e)
+    }
 })
 
 module.exports = router

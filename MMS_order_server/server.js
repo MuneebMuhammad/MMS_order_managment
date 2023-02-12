@@ -5,9 +5,6 @@ var cartController = require('./Controllers/cart.js')
 var orderController = require('./Controllers/order.js')
 const app = express()
 
- // hello world world
- // hello 
-
  app.use(bodyParser.json())
 app.use(bodyParser.urlencoded({extended: true}));
 app.use(morgan('tiny'))
@@ -20,4 +17,3 @@ console.log('Server running on http://localhost:3000');
 
 app.use('/cart', cartController)
 app.use('/order', orderController)
-// bye

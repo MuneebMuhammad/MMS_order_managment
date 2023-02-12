@@ -13,9 +13,21 @@ const userSchema = mongoose.Schema({
     password: {
         type: String,
         required: true
+    }
+})
+
+const cartSchema = mongoose.Schema({
+    user_id:{
+        type: Object,
+        required: true
     },
-    cart: {
-        type: [String]
+    product_id:{
+        type: Object,
+        required: true
+    },
+    quantity:{
+        type: Number,
+        required: true
     }
 })
 
@@ -91,11 +103,13 @@ const categoryModel = mongoose.model('category', categorySchema)
 const productModel = mongoose.model('product', productSchema)
 const orderModel = mongoose.model('order', orderSchema)
 const invoiceModel = mongoose.model('invoice', invoiceSchema)
+const cartModel = mongoose.model('cart', cartSchema)
 
 module.exports = {
     userModel,
     categoryModel,
     orderModel,
     productModel,
-    invoiceModel
+    invoiceModel,
+    cartModel
 }

@@ -2,7 +2,7 @@ const express = require('express');
 const { escapeSelector } = require('jquery');
 const router = express.Router();
 const mongoose = require('../database')
-const {userModel, categoryModel, orderModel, productModel, invoiceModel} = require('../schemas')
+const {userModel, categoryModel, orderModel, productModel, invoiceModel, cartModel} = require('../schemas')
 
 const ObjectId = require('mongoose').Types.ObjectId;
 
@@ -31,47 +31,68 @@ function countQuantities(products){
     return cost
 }
 
+// get all products available
 router.get('/getAllProducts', async(req, res)=>{
     products = await productModel.find({})
     res.json(products)
 })
 
+// get list of all orders of all the users
 router.get('/getAllOrders', async(req, res)=>{
     all_orders = await orderModel.find({})
     res.json(all_orders)    
 })
 
+// get all invoices of a specific order
 router.get('/getOrderInvoices/:order_id', async(req, res)=>{
     all_orders = await invoiceModel.find({order_id: ObjectId(req.params.order_id)})
     res.json(all_orders)
 })
 
+// delete a specific invoice
 router.delete('/deleteInvoice/:invoice_id', async(req, res)=>{
     console.log(req.params.invoice_id)
     await invoiceModel.find({_id: req.params.invoice_id}).deleteOne().exec()
     res.json("deleted invoice")
 })
 
+// add order of a user. Receives user_id, shipping_address, and status
 router.post('/addOrder', async(req, res)=>{
-    // first do payment
-    cost = await findCost(req.body.product_id)
-    console.log(req.body.user_id, req.body.product_id, req.body.shipping_address, req.body.status, cost)
-    newOrder = new orderModel({user_id: req.body.user_id, product_id: req.body.product_id, shipping_address: req.body.shipping_address, cost: cost, status: req.body.status})
-    await newOrder.save()
-    res.json(true)
+    total_cost = 0
+    costArr = []
+    // productIds = []
+    products = await cartModel.find({user_id: ObjectId(req.body.user_id)})
+    for (p of products){
+        productData = await productModel.find({_id: p.product_id})
+        cost = productData[0].price
+        total_cost += (cost*p.quantity)
+        costArr.push(cost)
+    }
+    newOrder = new orderModel({user_id: ObjectId(req.body.user_id), shipping_address: req.body.shipping_address, cost: total_cost, status: req.body.status})
+    o = await newOrder.save()
+    count = 0
+    for (p of products){
+        invoice = new invoiceModel({order_id: o._id, product_id: p.product_id, quantity: p.quantity, cost: costArr[count]})
+        await invoice.save()
+        count += 1
+    }
+    res.json(o)
 })
 
+// delete an order and all its invoices
 router.delete('/deleteOrder', async(req, res)=>{
     await orderModel.find({_id: req.body.order_id}).deleteOne().exec()
     await invoiceModel.find({order_id: ObjectId(req.body.order_id)}).deleteMany().exec()
     res.json("deleted order")
 })
 
+// update the orderAddress of an order
 router.put('/updateOrderAddress', async(req, res)=>{
     await orderModel.findOneAndUpdate({_id: req.body.order_id}, {shipping_address: req.body.shipping_address})
     res.json("Updated address")
 })
 
+// change the order status of an order
 router.put('/updateOrderStatus', async(req, res)=>{
     current_status = await orderModel.find({_id: req.body.order_id}).select({_id: 0, status: 1})
     new_status = current_status[0].status == "not delivered"? "delivered": "not delivered"
