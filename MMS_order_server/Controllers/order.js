@@ -31,6 +31,11 @@ function countQuantities(products){
     return cost
 }
 
+router.get('/getAllCategories', async(req, res)=>{
+    categories = await categoryModel.find({})
+    res.json(categories)
+})
+
 // get all products available
 router.get('/getAllProducts', async(req, res)=>{
     products = await productModel.find({})
