@@ -65,7 +65,10 @@ router.delete('/deleteInvoice/:invoice_id', async(req, res)=>{
 router.post('/addOrder', async(req, res)=>{
     total_cost = 0
     costArr = []
-    // productIds = []
+    const currentDate = new Date();
+    const options = { year: 'numeric', month: '2-digit', day: '2-digit' };
+    const currentDateString = currentDate.toLocaleString('en-US', options);
+
     products = await cartModel.find({user_id: ObjectId(req.body.user_id)})
     for (p of products){
         productData = await productModel.find({_id: p.product_id})
@@ -73,7 +76,7 @@ router.post('/addOrder', async(req, res)=>{
         total_cost += (cost*p.quantity)
         costArr.push(cost)
     }
-    newOrder = new orderModel({user_id: ObjectId(req.body.user_id), shipping_address: req.body.shipping_address, cost: total_cost, status: req.body.status})
+    newOrder = new orderModel({user_id: ObjectId(req.body.user_id), shipping_address: req.body.shipping_address, cost: total_cost, status: req.body.status, date: currentDateString})
     o = await newOrder.save()
     count = 0
     for (p of products){
